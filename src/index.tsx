@@ -1,15 +1,20 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import App from './App';
 import reportWebVitals from './reportWebVitals';
+import {BrowserRouter as Router, Route, Switch} from 'react-router-dom';
+import {Dashboard} from "./views/dashboard";
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 root.render(
   <React.StrictMode>
-    <App />
+      <Router>
+          <Switch>
+              <Route path="/" component={Dashboard} />
+          </Switch>
+      </Router>
   </React.StrictMode>
 );
 
