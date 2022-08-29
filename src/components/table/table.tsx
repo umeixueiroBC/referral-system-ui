@@ -1,174 +1,161 @@
+import './table.scss';
 import * as React from 'react';
-import Paper from '@mui/material/Paper';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TablePagination from '@mui/material/TablePagination';
-import TableRow from '@mui/material/TableRow';
+import {useState} from "react";
+import {Link} from "react-router-dom";
+import { DataGrid } from '@mui/x-data-grid';
+import { DeleteOutlined, EditOutlined, EmailOutlined, FileOpenOutlined, LinkedIn } from '@mui/icons-material/';
+import { 
+    Box, 
+    Chip,
+    IconButton,
+    Stack
+} from "@mui/material";
 
-interface Column {
-    id: 'name' | 'code' | 'population' | 'size' | 'density';
-    label: string;
-    minWidth?: number;
-    align?: 'right';
-    format?: (value: number) => string;
-}
+export default function ApexTable() {
 
-const columns: readonly Column[] = [
-    { id: 'name', label: 'Name', minWidth: 170 },
-    { id: 'code', label: 'ISO\u00a0Code', minWidth: 100 },
-    {
-        id: 'population',
-        label: 'Population',
-        minWidth: 170,
-        align: 'right',
-        format: (value: number) => value.toLocaleString('en-US'),
-    },
-    {
-        id: 'size',
-        label: 'Size\u00a0(km\u00b2)',
-        minWidth: 170,
-        align: 'right',
-        format: (value: number) => value.toLocaleString('en-US'),
-    },
-    {
-        id: 'density',
-        label: 'Density',
-        minWidth: 170,
-        align: 'right',
-        format: (value: number) => value.toFixed(2),
-    },
-];
+    const [row, setRow] = useState<any[]>([]);
+    const [col, setColumns] = useState<any[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+    
+    React.useEffect(() => {
+        getData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
-interface Data {
-    name: string;
-    code: string;
-    population: number;
-    size: number;
-    density: number;
-}
+    const getData = async () => {
+        const data = await fetch('https://jsonplaceholder.typicode.com/users')
+        const referral = await data.json();
+        handleCorrectData(referral);
+    }
 
-function createData(
-    name: string,
-    code: string,
-    population: number,
-    size: number,
-): Data {
-    const density = population / size;
-    return { name, code, population, size, density };
-}
+    const handleCorrectData = (referrals: any ) => {
+        let mock = 0;
+        const mapping = referrals.map((data: any) => {
+            mock = mock + 1;
+            return {
+                id: data.id,
+                referred_by: 'Mark Goodman',
+                full_name: `${data.name} ${data.username}`,
+                phone_number: '5555555555',
+                email: data.email,
+                linkedin_url: '#',
+                cv_url: '#',
+                tech_stacks: ['Typescript','Java','Python','React','Javascript','Scala','MySQL','Angular','QA'],
+                ta_recruiter: 'John',
+                referral_status_id: 'in progress',
+            }
+        });
 
-const rows = [
-    createData('India', 'IN', 1324171354, 3287263),
-    createData('China', 'CN', 1403500365, 9596961),
-    createData('Italy', 'IT', 60483973, 301340),
-    createData('United States', 'US', 327167434, 9833520),
-    createData('Canada', 'CA', 37602103, 9984670),
-    createData('Australia', 'AU', 25475400, 7692024),
-    createData('Germany', 'DE', 83019200, 357578),
-    createData('Ireland', 'IE', 4857000, 70273),
-    createData('Mexico', 'MX', 126577691, 1972550),
-    createData('Japan', 'JP', 126317000, 377973),
-    createData('France', 'FR', 67022000, 640679),
-    createData('United Kingdom', 'GB', 67545757, 242495),
-    createData('Russia', 'RU', 146793744, 17098246),
-    createData('Nigeria', 'NG', 200962417, 923768),
-    createData('Brazil', 'BR', 210147125, 8515767),
-    createData('India', 'IN', 1324171354, 3287263),
-    createData('China', 'CN', 1403500365, 9596961),
-    createData('Italy', 'IT', 60483973, 301340),
-    createData('United States', 'US', 327167434, 9833520),
-    createData('Canada', 'CA', 37602103, 9984670),
-    createData('Australia', 'AU', 25475400, 7692024),
-    createData('Germany', 'DE', 83019200, 357578),
-    createData('Ireland', 'IE', 4857000, 70273),
-    createData('Mexico', 'MX', 126577691, 1972550),
-    createData('Japan', 'JP', 126317000, 377973),
-    createData('France', 'FR', 67022000, 640679),
-    createData('United Kingdom', 'GB', 67545757, 242495),
-    createData('Russia', 'RU', 146793744, 17098246),
-    createData('Nigeria', 'NG', 200962417, 923768),
-    createData('Brazil', 'BR', 210147125, 8515767),
-    createData('India', 'IN', 1324171354, 3287263),
-    createData('China', 'CN', 1403500365, 9596961),
-    createData('Italy', 'IT', 60483973, 301340),
-    createData('United States', 'US', 327167434, 9833520),
-    createData('Canada', 'CA', 37602103, 9984670),
-    createData('Australia', 'AU', 25475400, 7692024),
-    createData('Germany', 'DE', 83019200, 357578),
-    createData('Ireland', 'IE', 4857000, 70273),
-    createData('Mexico', 'MX', 126577691, 1972550),
-    createData('Japan', 'JP', 126317000, 377973),
-    createData('France', 'FR', 67022000, 640679),
-    createData('United Kingdom', 'GB', 67545757, 242495),
-    createData('Russia', 'RU', 146793744, 17098246),
-    createData('Nigeria', 'NG', 200962417, 923768),
-    createData('Brazil', 'BR', 210147125, 8515767),
-];
+        setRow(mapping);
 
-export default function StickyHeadTable() {
-    const [page, setPage] = React.useState(0);
-    const [rowsPerPage, setRowsPerPage] = React.useState(13);
+        const progress = (params: any) => {
+            switch (params.value) {
+                case 'in progress':
+                    params.value = 'primary';
+                    break;
+                case 'hired':
+                    params.value = 'success';
+                    break;
+                case 'closed':
+                    params.value = 'error';
+                    break;
+                default:
+                    params.value = 'default';
+                    break;
+            }
+            return params.value;
+        }
 
-    const handleChangePage = (event: unknown, newPage: number) => {
-        setPage(newPage);
-    };
+        const columns = [
+            { field: "referral_status_id", headerName: "Status", width: 108, renderCell: (params: any) => (
+                <Chip label={params.value} size="small" variant="outlined" color={progress(params)} />
+            ),},
+            { field: "full_name", headerName: "Full Name", width: 230 },
+            { field: "linkedin_url", headerName: "Linkedin", width: 74, renderCell: (params: any) => (
+                <IconButton color="primary" component="span">
+                    <Link to={params.value}>
+                        <div className='icons'><LinkedIn/></div>
+                    </Link>
+                </IconButton>
+                ),
+            },
+            { field: "cv_url", headerName: "CV", width: 30, renderCell: (params: any) => (
+                    <IconButton color="primary" component="span">
+                        <Link to={params.value}>
+                            <div className='icons'><FileOpenOutlined/></div>
+                        </Link>
+                    </IconButton>
+                ),
+            },
+            { field: "phone_number", headerName: "Phone", width: 100 },
+            { field: "email", headerName: "Email", width: 254, renderCell: (params: any) => (
+                    <div className='email-icon'>
+                        <IconButton className='icons' color="primary" component="span">
+                            <Link to={'#'+params.value} onClick={() => {navigator.clipboard.writeText(params.value)}}>
+                                <EmailOutlined/>
+                            </Link>
+                        </IconButton>
+                        {params.value}
+                    </div>
+                    
+                ),
+            },
+            { field: "tech_stacks", headerName: "Tech Stacks", width: 294, renderCell: (params: any) => (
+                <div className='tech_tag_container'>
+                    {params.value.map((tech: string) => (<span className='tag'>{ tech }</span>))}
+                </div>
+                ),
+            },
+            { field: "referred_by", headerName: "Referred_by", width: 240 },
+            { field: "ta_recruiter", headerName: "Ta Recruiter", width: 200 },
+            { field: "id", headerName: "Actions", width: 90, renderCell: (params: any) => (
+                    <Box sx={{ '& button': { m: 1 } }}>
+                        <Stack direction={'row'} spacing={1}>
+                            <IconButton color="primary" component="span">
+                                <Link to={`/referrals/edit/${params.value}`}>
+                                    <EditOutlined/>
+                                </Link>
+                            </IconButton>
+                            <IconButton color="error" component="span">
+                                <Link to={'#'}>
+                                    <DeleteOutlined/>
+                                </Link>
+                            </IconButton>
+                        </Stack>
+                    </Box>
+                ),
+            },
+        ];
 
-    const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setRowsPerPage(+event.target.value);
-        setPage(0);
-    };
+        setColumns(columns);
+        setLoading(false);
+        }
 
+    const myRow = row.map(( rows, index ) => ({
+        internalId: index,
+        id: rows.id,
+        referred_by: rows.referred_by,
+        full_name: rows.full_name,
+        phone_number: rows.phone_number,
+        email: rows.email,
+        linkedin_url: rows.linkedin_url,
+        cv_url: rows.cv_url,
+        tech_stacks: rows.tech_stacks,
+        ta_recruiter: rows.ta_recruiter,
+        referral_status_id: rows.referral_status_id,
+    }));
+    
     return (
-        <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-            <TableContainer sx={{ maxHeight: 740 }}>
-                <Table stickyHeader aria-label="sticky table">
-                    <TableHead>
-                        <TableRow>
-                            {columns.map((column) => (
-                                <TableCell
-                                    key={column.id}
-                                    align={column.align}
-                                    style={{ minWidth: column.minWidth }}
-                                >
-                                    {column.label}
-                                </TableCell>
-                            ))}
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {rows
-                            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                            .map((row) => {
-                                return (
-                                    <TableRow hover role="checkbox" tabIndex={-1} key={row.code}>
-                                        {columns.map((column) => {
-                                            const value = row[column.id];
-                                            return (
-                                                <TableCell key={column.id} align={column.align}>
-                                                    {column.format && typeof value === 'number'
-                                                        ? column.format(value)
-                                                        : value}
-                                                </TableCell>
-                                            );
-                                        })}
-                                    </TableRow>
-                                );
-                            })}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-            <TablePagination
-                rowsPerPageOptions={[7, 13, 50, 100]}
-                component="div"
-                count={rows.length}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={handleChangePage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
+        <div style={{ height: 460, width: '100%' }}>
+            <DataGrid
+                rows={myRow}
+                getRowId={(row) => row.internalId}
+                columns={col}
+                getRowHeight={ () => "auto" }
+                pageSize={5}
+                rowsPerPageOptions={[5, 10, 20, 50]}
+                loading={loading}
             />
-        </Paper>
+        </div>
     );
 }
