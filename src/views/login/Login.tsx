@@ -2,6 +2,7 @@ import {Button, Container, Typography} from "@mui/material";
 import React, {useEffect, useState} from "react";
 import {useHistory, useLocation} from "react-router-dom";
 import useLocalStorage from "../../components/storage/useLocalStorage";
+import { oauthServicePath } from "../../endpoints";
 
 // A custom hook that builds on useLocation to parse
 // the query string for you.
@@ -13,24 +14,23 @@ function useQuery() {
 
 const Login = () => {
     const [token, setToken] = useLocalStorage('token', '');
-    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+    const [isLoggedIn] = useState<boolean>(false);
     const handleLogin = () => {
-        window.location.href = "https://referral-system-api.onrender.com/auth/azure_oauth2";
+        window.location.href = oauthServicePath;
     }
 
     const query = useQuery();
     const history = useHistory();
+    const tokenFromQuery = query.get('token');
 
     useEffect(() => {
-        const tokenFromQuery = query.get('token');
-
         if (tokenFromQuery) {
             setToken(tokenFromQuery);
             history.push('referrals')
         } else if (token) {
             history.push('referrals')
         }
-    });
+    }, []);
 
     return <>
         { !isLoggedIn && <Container fixed sx={{marginTop: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>

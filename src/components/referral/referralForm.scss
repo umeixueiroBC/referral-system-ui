@@ -113,7 +113,7 @@
 .card-form {
   border-color: #cacaca !important;
 
-  .form-stacks-paper {
+  .card-form-stacks {
     display: flex;
     flex-direction: row;
     justify-content: flex-start;
@@ -123,7 +123,7 @@
   }
 }
 
-.form-stacks-paper .form-stacks-list {
+.card-form-stacks .form-stacks-list {
   padding: 8px 6px 8px 0;
   width: auto;
 }

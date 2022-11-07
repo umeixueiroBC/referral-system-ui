@@ -1,4 +1,3 @@
-import * as React from "react";
 import { ReferralDataGrid } from "../../components/referral";
 import Divider from '@mui/material/Divider';
 import Chip from '@mui/material/Chip';
@@ -18,7 +17,7 @@ const Referrals = () => {
             setToken('');
             history.replace('');
         }
-    });
+    }, []);
 
     return (
         <>

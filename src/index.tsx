@@ -1,4 +1,3 @@
-import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import reportWebVitals from './reportWebVitals';
@@ -21,6 +20,9 @@ root.render(
             <Router>
                 <Switch>
                     <Route path="/referrals">
+                        <Dashboard/>
+                    </Route>
+                    <Route path="/users">
                         <Dashboard/>
                     </Route>
                     <Route path="/" exact strict>

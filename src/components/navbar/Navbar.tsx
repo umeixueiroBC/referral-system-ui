@@ -1,4 +1,3 @@
-import * as React from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -13,15 +12,10 @@ import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
 import logo from "./img/apex_logo_white.svg";
 import './navbar.scss';
-import {Link, useHistory} from "react-router-dom";
+import { Link, useHistory } from "react-router-dom";
 import useLocalStorage from "../storage/useLocalStorage";
-
-const views = [
-    {
-        title: 'My referral',
-        url: 'referrals',
-    }
-];
+import { useFetchPermissions } from '../../services/userService';
+import { useEffect, useState } from 'react';
 
 const Navbar = () => {
     const history = useHistory();
@@ -30,6 +24,15 @@ const Navbar = () => {
         setToken('');
         history.replace('');
     }
+
+    const { fetchPermissions } = useFetchPermissions();
+
+    const [views, setViews] = useState<any>([
+        {
+            title: 'My referral',
+            url: 'referrals',
+        }
+    ]);
 
     const userMenu = [
         {
@@ -41,8 +44,8 @@ const Navbar = () => {
             onClick: logoutOnClick
         }
     ];
-    const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
-    const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
+    const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
+    const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
 
     const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
         setAnchorElNav(event.currentTarget);
@@ -59,11 +62,27 @@ const Navbar = () => {
         setAnchorElUser(null);
     };
 
+    useEffect(() => {
+        fetchPermissions(token).then(response => {
+            if (response.permissions.find((x: any) => x.id === 13)) {
+                setViews((current: any) => {
+                    return [
+                        ...current,
+                        {
+                            title: 'Users',
+                            url: 'users',
+                        }
+                    ]
+                });
+            }
+        });
+    }, []);
+
     return (
         <AppBar position={"static"}>
             <Container className={"navbar"} maxWidth={false}>
                 <Toolbar disableGutters>
-                    <Box component={"div"} sx={{display: {xs: 'none', sm: 'none', md: 'flex'}}}>
+                    <Box component={"div"} sx={{ display: { xs: 'none', sm: 'none', md: 'flex' } }}>
                         <img
                             src={logo}
                             className={"apex-logo"}
@@ -73,7 +92,7 @@ const Navbar = () => {
                             }}
                         />
                     </Box>
-                    <Box sx={{flexGrow: 1, display: {xs: 'flex', md: 'none'}}}>
+                    <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
                         <IconButton
                             size={"large"}
                             aria-label={"account of current user"}
@@ -82,7 +101,7 @@ const Navbar = () => {
                             onClick={handleOpenNavMenu}
                             color="inherit"
                         >
-                            <MenuIcon/>
+                            <MenuIcon />
                         </IconButton>
                         <Menu
                             id={"menu-appbar"}
@@ -99,21 +118,21 @@ const Navbar = () => {
                             open={Boolean(anchorElNav)}
                             onClose={handleCloseNavMenu}
                             sx={{
-                                display: {xs: 'block', md: 'none'},
+                                display: { xs: 'block', md: 'none' },
                             }}
                         >
-                            {views.map((view) => (
+                            {views.map((view: any) => (
                                 <MenuItem key={view.url} onClick={handleCloseNavMenu}>
                                     <Typography textAlign={"center"}>
                                         <Link
-                                            style={{textDecoration: "none", color: "black"}}
+                                            style={{ textDecoration: "none", color: "black" }}
                                             to={`/${view.url}`}>{view.title}</Link>
                                     </Typography>
                                 </MenuItem>
                             ))}
                         </Menu>
                     </Box>
-                    <Box component={"div"} sx={{display: {xs: 'block', sm: 'block', md: 'none'}}}>
+                    <Box component={"div"} sx={{ display: { xs: 'block', sm: 'block', md: 'none' } }}>
                         <img
                             src={logo}
                             className={"apex-logo-mobile"}
@@ -123,27 +142,27 @@ const Navbar = () => {
                             }}
                         />
                     </Box>
-                    <Box sx={{flexGrow: 1, display: {xs: 'none', md: 'flex'}}}>
-                        {views.map((view) => (
+                    <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
+                        {views.map((view: any) => (
                             <Button
                                 key={view.url}
                                 onClick={handleCloseNavMenu}
-                                sx={{my: 2, color: 'white', display: 'block'}}
+                                sx={{ my: 2, color: 'white', display: 'block' }}
                             >
-                                <Link style={{textDecoration: "none", color: "white"}}
-                                      to={`/${view.url}`}>{view.title}</Link>
+                                <Link style={{ textDecoration: "none", color: "white" }}
+                                    to={`/${view.url}`}>{view.title}</Link>
                             </Button>
                         ))}
                     </Box>
 
-                    <Box sx={{flexGrow: 0}}>
+                    <Box sx={{ flexGrow: 0 }}>
                         <Tooltip title={"Open settings"}>
-                            <IconButton onClick={handleOpenUserMenu} sx={{p: 0}}>
-                                <Avatar alt={"Avatar"} src={"/static/images/avatar/2.jpg"}/>
+                            <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
+                                <Avatar alt={"Avatar"} src={"/static/images/avatar/2.jpg"} />
                             </IconButton>
                         </Tooltip>
                         <Menu
-                            sx={{mt: '45px'}}
+                            sx={{ mt: '45px' }}
                             id={"menu-appbar"}
                             anchorEl={anchorElUser}
                             anchorOrigin={{
@@ -160,7 +179,7 @@ const Navbar = () => {
                         >
                             {userMenu.map((menu, index) => (
                                 <MenuItem key={index} onClick={handleCloseUserMenu}>
-                                    <a onClick={menu.onClick}><Typography textAlign={"center"}>{menu.name}</Typography></a>
+                                    <Button onClick={menu.onClick}><Typography textAlign={"center"}>{menu.name}</Typography></Button>
                                 </MenuItem>
                             ))}
                         </Menu>

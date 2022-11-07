@@ -5,6 +5,16 @@ body {
 	font-family: 'Libre Franklin', sans-serif;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+
+}
+
+div, span, p, button {
+	font-family: 'Libre Franklin', sans-serif !important;
+}
+
+.MuiButton-contained  {
+	color: white !important;
+	background-color: #44546A !important;
 }
 
 code {

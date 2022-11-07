@@ -129,6 +129,25 @@ export const useUpdateReferral = () => {
     };
 }
 
+const assignRecruiter = async ({request, token}: { request: any; token: string }) => {
+    const { data } = await axios.patch(`${baseApiPath}/referral/${request.referralId}/ta/${request.taId}`, {}, {
+        headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    });
+    return data;
+}
+
+export const useAssignRecruiter = () => {
+    const {isSuccess, isLoading, mutateAsync} = useMutation(assignRecruiter);
+
+    return {
+        isSuccessAssignRecruiter: isSuccess,
+        isLoadingAssignRecruiter: isLoading,
+        assignRecruiter: mutateAsync
+    };
+}
+
 const deleteReferral = async ({id, token}: { id: number; token: string;}) => {
     const { data } = await axios.delete(`${baseApiPath}${referralsBasePath}/${id}`, {
         headers: {
