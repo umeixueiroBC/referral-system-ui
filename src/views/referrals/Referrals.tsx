@@ -31,7 +31,7 @@ const Referrals = () => {
                         variant="contained"
                         endIcon={ <AddIcon/> }
                         onClick={ () => {
-                            window.location.href = '/referrals/create'
+                            history.push('/referrals/create');
                         } }>
                         Create Referral
                     </Button>

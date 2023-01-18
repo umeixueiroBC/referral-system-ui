@@ -88,7 +88,7 @@ const Navbar = () => {
                             className={"apex-logo"}
                             alt="Apexlogo"
                             onClick={() => {
-                                window.location.href = '/'
+                                history.replace('/');
                             }}
                         />
                     </Box>
@@ -138,7 +138,7 @@ const Navbar = () => {
                             className={"apex-logo-mobile"}
                             alt={"Apexlogo"}
                             onClick={() => {
-                                window.location.href = '/'
+                                history.replace('/');
                             }}
                         />
                     </Box>
