@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import {
     DataGrid, GridColDef,
+    GridColumnMenuContainer,
+    GridColumnMenuProps,
+    GridFilterMenuItem,
     GridPreProcessEditCellProps,
     GridRenderCellParams,
-    GridToolbarColumnsButton,
-    GridToolbarContainer,
+    SortGridMenuItems,
 } from '@mui/x-data-grid';
 import {
+    Comment,
     DeleteOutlined,
     EditOutlined,
     EmailOutlined,
@@ -14,13 +17,20 @@ import {
     LinkedIn,
 } from '@mui/icons-material/';
 import {
+    Button,
     Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     IconButton,
     LinearProgress, Select, SelectChangeEvent,
     styled,
     Tooltip,
     tooltipClasses,
-    TooltipProps
+    TooltipProps,
+    useMediaQuery,
+    useTheme
 } from "@mui/material";
 import './referralDataGrid.scss';
 import {
@@ -59,15 +69,24 @@ const LightTooltip = styled(({ className, ...props }: TooltipProps) => (
     },
 }));
 
-function CustomToolbar() {
+function CustomColumnMenu(props: GridColumnMenuProps) {
+    const { hideMenu, currentColumn, color, ...other } = props;
+
     return (
-        <GridToolbarContainer>
-            <GridToolbarColumnsButton />
-        </GridToolbarContainer>
+        <GridColumnMenuContainer
+            hideMenu={hideMenu}
+            currentColumn={currentColumn}
+            {...other}
+        >
+            <SortGridMenuItems onClick={hideMenu} column={currentColumn} />
+            <GridFilterMenuItem onClick={hideMenu} column={currentColumn} />
+        </GridColumnMenuContainer>
     );
 }
 
 export default function ReferralDataGrid() {
+    const theme = useTheme();
+    const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const [token, setToken] = useLocalStorage('token', '');
     const history = useHistory();
     const { fetchAllReferrals, isLoadingFetchAllReferrals } = useFetchAllReferrals();
@@ -81,8 +100,12 @@ export default function ReferralDataGrid() {
     const handleClickCopyEmail = () => {
         snackbar.success('Email was copied successfully!')
     };
+    const [referralComments, setReferralComments] = useState<any>({});
 
     const [recruitersList, setRecruitersList] = useState<any>([]);
+    const [isCommentsDialogOpen, setIsCommentsDialogOpen] = useState<boolean>(false);
+    const [isDeleteConfirmDialogOpen, setIsDeleteConfirmDialogOpen] = useState<boolean>(false);
+    const [idToBeDeleted, setIdToBeDeleted] = useState<number>();
 
     // PERMISSIONS
     const { fetchPermissions, isSuccesFetchPermissions } = useFetchPermissions();
@@ -165,7 +188,9 @@ export default function ReferralDataGrid() {
             handleFetchReferrals();
         }).catch(e => {
             console.log(e);
-        })
+        }).finally(() => {
+            setIdToBeDeleted(undefined);
+        });
     }
 
     const handleFetchRecruiters = async () => {
@@ -199,19 +224,17 @@ export default function ReferralDataGrid() {
     const referralDataGridColumns: GridColDef[] = [
         {
             field: "status",
-            sortable: false,
-            filterable: false,
             headerName: "Status",
-            disableColumnMenu: true,
             hideable: false,
+            sortable: true,
             headerAlign: "center",
             align: "center",
             flex: .1,
             minWidth: 150,
-            editable: true,
+            editable: Boolean(permissions.find((x: any) => x.id === 11 || x.id === 32)),
             renderEditCell: renderSelectEditInputCell,
             renderCell: (params => {
-                const status = statusOptions.find(x => x.value === params.formattedValue)
+                const status = statusOptions.find(x => x.value === params.row.status)
                 return <Chip
                     className={'center'}
                     label={status?.label ?? 'Loading'}
@@ -232,7 +255,7 @@ export default function ReferralDataGrid() {
                     snackbar.success('Referral Updated', 'Referral');
                     handleFetchReferrals();
                     return { ...params.props, error: false }
-                }).catch(({response}) => {
+                }).catch(({ response }) => {
                     if (response.status === 401) {
                         snackbar.error('Unauthorized', 'Referral');
                     } else {
@@ -242,15 +265,20 @@ export default function ReferralDataGrid() {
                     return { ...params.props, error: true }
                 });
             },
+            valueGetter: (params) => {
+                const status = statusOptions.find(x => x.value === params.value);
+
+                return status?.label;
+            },
         },
         {
             field: "full_name",
             headerName: "Full Name",
             headerAlign: "center",
-            disableColumnMenu: true,
             hideable: false,
             flex: 1,
             minWidth: 200,
+            filterable: true,
         },
         {
             field: "linkedin_url",
@@ -303,7 +331,7 @@ export default function ReferralDataGrid() {
         {
             field: "email",
             headerName: "Email",
-            disableColumnMenu: true,
+            filterable: true,
             hideable: false,
             headerAlign: "center",
             align: "center",
@@ -327,9 +355,8 @@ export default function ReferralDataGrid() {
         {
             field: "tech_stacks",
             sortable: false,
-            filterable: false,
+            filterable: true,
             headerName: "Tech Stacks",
-            disableColumnMenu: true,
             headerAlign: "center",
             align: "center",
             flex: 3,
@@ -344,7 +371,6 @@ export default function ReferralDataGrid() {
         {
             field: "referred_by_name",
             headerName: "Referred By",
-            disableColumnMenu: true,
             headerAlign: "center",
             align: "center",
             flex: 1,
@@ -355,13 +381,14 @@ export default function ReferralDataGrid() {
             headerName: "T.A. Recruiter",
             headerAlign: "center",
             align: "center",
+            filterable: true,
             flex: 1,
             hideable: false,
             minWidth: 160,
             editable: true,
             renderEditCell: renderSelectEditInputRecruitersCell,
             renderCell: (params => {
-                const ta = recruitersList.find((ta: any) => ta.id === params.formattedValue);
+                const ta = recruitersList.find((ta: any) => ta.id === params.row.ta_recruiter);
                 return ta?.name ?? 'Loading';
             }),
             preProcessEditCellProps: (params: GridPreProcessEditCellProps) => {
@@ -377,7 +404,7 @@ export default function ReferralDataGrid() {
                     snackbar.success('TA assigned', 'Referral');
                     handleFetchReferrals();
                     return { ...params.props, error: false }
-                }).catch(({response}) => {
+                }).catch(({ response }) => {
                     if (response.status === 401) {
                         snackbar.error('Unauthorized', 'Referral');
                     } else {
@@ -387,6 +414,11 @@ export default function ReferralDataGrid() {
                     return { ...params.props, error: true }
                 });
             },
+            valueGetter: (params) => {
+                const ta = recruitersList.find((ta: any) => ta.id === params.value);
+
+                return ta?.name;
+            },
         },
         {
             field: "actions",
@@ -395,7 +427,7 @@ export default function ReferralDataGrid() {
             align: "center",
             hideable: false,
             flex: .8,
-            minWidth: 80,
+            minWidth: 120,
             renderCell: (params: any) => (
                 <>
                     <LightTooltip title="Edit referral">
@@ -407,11 +439,30 @@ export default function ReferralDataGrid() {
                             <EditOutlined />
                         </IconButton>
                     </LightTooltip>
+                    <LightTooltip title="View comments">
+                        <IconButton
+                            color="primary"
+                            component="button"
+                            onClick={() => {
+                                setReferralComments({
+                                    referralName: params.row.full_name,
+                                    comments: params.row.comments !== '' ? params.row.comments : 'No comments'
+                                });
+
+                                setIsCommentsDialogOpen(true);
+                            }}
+                        >
+                            <Comment />
+                        </IconButton>
+                    </LightTooltip>
                     {permissions.find((x: any) => x.id === 11) && <LightTooltip title="Delete referral">
                         <IconButton
                             color="error"
                             component="button"
-                            onClick={() => handleDelete(params.id)}
+                            onClick={() => {
+                                setIdToBeDeleted(params.row.id)
+                                setIsDeleteConfirmDialogOpen(true);
+                            }}
                         >
                             <DeleteOutlined />
                         </IconButton>
@@ -427,14 +478,14 @@ export default function ReferralDataGrid() {
                 key="referralDataGrid"
                 components={{
                     LoadingOverlay: LinearProgress,
-                    Toolbar: CustomToolbar,
+                    ColumnMenu: CustomColumnMenu
                 }}
                 initialState={{
                     columns: {
                         columnVisibilityModel: {
                             // Hide columns status and traderName, the other columns will remain visible
                             ta_recruiter: Boolean(permissions?.find((x: any) => {
-                                return x.id === 11 || x.id === 32
+                                return x.id === 11 || x.id === 33
                             }))
                         }
                     },
@@ -448,6 +499,67 @@ export default function ReferralDataGrid() {
                 loading={isLoadingFetchAllReferrals}
                 experimentalFeatures={{ newEditingApi: true }}
             />}
+
+            {/* Dialog for Comments */}
+            <Dialog
+                fullScreen={fullScreen}
+                open={isCommentsDialogOpen}
+                onClose={() => setIsCommentsDialogOpen(false)}
+                aria-labelledby="permission-dialog-title"
+            >
+                <DialogTitle id="permission-dialog-title">
+                    {`Comments for ${referralComments.referralName}`}
+                </DialogTitle>
+                <DialogContent sx={{ textAlign: 'center' }}>
+                    {referralComments.comments}
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        sx={{ color: "#44546A", borderColor: "#44546A", ":hover": { borderColor: "white", color: "white", backgroundColor: "#44546A" } }}
+                        variant={"outlined"}
+                        onClick={() => setIsCommentsDialogOpen(false)}
+                        autoFocus
+                    >
+                        Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Dialog for Confirm delete */}
+            <Dialog
+                fullScreen={fullScreen}
+                open={isDeleteConfirmDialogOpen}
+                onClose={() => setIsDeleteConfirmDialogOpen(false)}
+                aria-labelledby="permission-dialog-title"
+            >
+                <DialogTitle id="permission-dialog-title">
+                    Delete confirmation
+                </DialogTitle>
+                <DialogContent sx={{ textAlign: 'center' }}>
+                    Are you sure you want to remove this referral?
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        sx={{ color: "#44546A", borderColor: "#44546A", ":hover": { borderColor: "white", color: "white", backgroundColor: "#44546A" } }}
+                        variant={"outlined"}
+                        onClick={() => setIsDeleteConfirmDialogOpen(false)}
+                        autoFocus
+                    >
+                        Close
+                    </Button>
+                    <Button
+                        color='error'
+                        variant={"outlined"}
+                        onClick={() => {
+                            handleDelete(idToBeDeleted);
+                            setIsDeleteConfirmDialogOpen(false)
+                        }}
+                        autoFocus
+                    >
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 }
