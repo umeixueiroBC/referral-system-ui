@@ -217,7 +217,13 @@ export default function ReferralDataGrid() {
                 setPermissions(response.permissions);
                 handleFetchRecruiters();
                 handleFetchReferrals();
-            })
+            }).catch(e => {
+                console.log(e);
+                if (e.response.status === 401) {
+                    setToken('');
+                    history.replace('');
+                }
+            });
         }
     }, []);
 

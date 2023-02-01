@@ -75,6 +75,12 @@ const Navbar = () => {
                     ]
                 });
             }
+        }).catch(e => {
+            console.log(e);
+            if (e.response.status === 401) {
+                setToken('');
+                history.replace('');
+            }
         });
     }, []);
 
