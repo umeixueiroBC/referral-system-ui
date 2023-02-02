@@ -2,6 +2,18 @@ import axios from "axios";
 import {useMutation} from "@tanstack/react-query";
 import {baseApiPath, referralsBasePath} from "../endpoints";
 
+type chipColor = "primary" | "success" | "error" | "default" | "secondary" | "info" | "warning" | undefined;
+export const statusOptions: ({ value: number; color: chipColor; label: string })[] = [
+    { value: 0, label: 'Select one', color: 'default', },
+    { value: 1, label: 'Recruitment', color: 'primary', },
+    { value: 2, label: 'Interviewing', color: 'primary', },
+    { value: 3, label: 'Managers', color: 'primary', },
+    { value: 4, label: 'Client', color: 'primary', },
+    { value: 5, label: 'Offer', color: 'success', },
+    { value: 6, label: 'Hiring', color: 'success', },
+    { value: 7, label: 'Failed', color: 'error', }
+];
+
 const fetchAllReferrals: any = async (token: string) => {
     try {
         const { data } = await axios.get(`${baseApiPath}${referralsBasePath}`, {
@@ -11,7 +23,7 @@ const fetchAllReferrals: any = async (token: string) => {
         });
 
         data.map((response: any) => {
-            response.status = response.status ?? 0;
+            response.status = statusOptions.find(x => x.value === response.status)?.label ?? statusOptions[0].label;
             response.ta_recruiter = response.ta_recruiter ?? 0;
             response.tech_stacks = response.tech_stack ? response.tech_stack.split(',') : [response.tech_stack];
             if (!response.tech_stacks || (response.tech_stacks[response.tech_stacks.length - 1] === '') || (response.tech_stacks[0] === null)) response.tech_stacks.pop();

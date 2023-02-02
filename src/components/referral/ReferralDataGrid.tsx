@@ -37,26 +37,14 @@ import {
     useFetchAllReferrals,
     useDeleteReferrals,
     useUpdateReferral,
-    useAssignRecruiter
+    useAssignRecruiter,
+    statusOptions
 } from "../../services/referralService";
 import useLocalStorage from "../storage/useLocalStorage";
 import { useHistory } from "react-router-dom";
 import { useSnackbar } from "../../hooks/SnackBarProvider";
 import { useGridApiContext } from "@mui/x-data-grid-pro";
-import { useFetchAllRecruiters } from "../../services/recruitersService";
 import { useFetchPermissions } from '../../services/userService';
-
-type chipColor = "primary" | "success" | "error" | "default" | "secondary" | "info" | "warning" | undefined;
-const statusOptions: ({ value: number; color: chipColor; label: string })[] = [
-    { value: 0, label: 'Select one', color: 'default', },
-    { value: 1, label: 'Recruitment', color: 'primary', },
-    { value: 2, label: 'Interviewing', color: 'primary', },
-    { value: 3, label: 'Managers ', color: 'primary', },
-    { value: 4, label: 'Client ', color: 'primary', },
-    { value: 5, label: 'Offer ', color: 'success', },
-    { value: 6, label: 'Hiring ', color: 'success', },
-    { value: 7, label: 'Failed ', color: 'error', }
-];
 
 const LightTooltip = styled(({ className, ...props }: TooltipProps) => (
     <Tooltip {...props} classes={{ popper: className }} />
@@ -84,7 +72,7 @@ function CustomColumnMenu(props: GridColumnMenuProps) {
     );
 }
 
-export default function ReferralDataGrid() {
+export default function ReferralDataGrid(propsReferralDataGrid: any) {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const [token, setToken] = useLocalStorage('token', '');
@@ -93,7 +81,6 @@ export default function ReferralDataGrid() {
     const { updateReferral } = useUpdateReferral();
     const { assignRecruiter } = useAssignRecruiter();
     const { deleteReferral } = useDeleteReferrals();
-    const { fetchAllRecruiters } = useFetchAllRecruiters();
     const [referrals, setReferrals] = useState<any>([]);
     const [pageSize, setPageSize] = useState<number>(10);
     const snackbar = useSnackbar();
@@ -102,7 +89,6 @@ export default function ReferralDataGrid() {
     };
     const [referralComments, setReferralComments] = useState<any>({});
 
-    const [recruitersList, setRecruitersList] = useState<any>([]);
     const [isCommentsDialogOpen, setIsCommentsDialogOpen] = useState<boolean>(false);
     const [isDeleteConfirmDialogOpen, setIsDeleteConfirmDialogOpen] = useState<boolean>(false);
     const [idToBeDeleted, setIdToBeDeleted] = useState<number>();
@@ -115,14 +101,17 @@ export default function ReferralDataGrid() {
         const { id, value, field } = props;
         const apiRef = useGridApiContext();
 
+        const selectedOption = statusOptions.find(x => x.label === value)?.value.toString();
+
         const handleChange = async (event: SelectChangeEvent) => {
-            await apiRef.current.setEditCellValue({ id, field, value: event.target.value });
+            const newOption = statusOptions.find(x => x.value.toString() === event.target.value);
+            await apiRef.current.setEditCellValue({ id, field, value: newOption?.label });
             apiRef.current.stopCellEditMode({ id, field });
         };
 
         return (
             <Select
-                value={value}
+                value={selectedOption}
                 onChange={handleChange}
                 size="small"
                 sx={{ height: 1 }}
@@ -143,15 +132,18 @@ export default function ReferralDataGrid() {
     function SelectEditInputRecruitersCell(props: GridRenderCellParams) {
         const { id, value, field } = props;
         const apiRef = useGridApiContext();
+        const taSelected = propsReferralDataGrid.recruitersList.find((x: any) => x.name === value);
 
         const handleChange = async (event: SelectChangeEvent) => {
-            await apiRef.current.setEditCellValue({ id, field, value: event.target.value });
+            const newValue = propsReferralDataGrid.recruitersList.find((x: any) => x.id.toString() === event.target.value);
+
+            await apiRef.current.setEditCellValue({ id, field, value: newValue?.name });
             apiRef.current.stopCellEditMode({ id, field });
         };
 
         return (
             <Select
-                value={value}
+                value={taSelected.id}
                 onChange={handleChange}
                 size="small"
                 sx={{ height: 1 }}
@@ -159,7 +151,7 @@ export default function ReferralDataGrid() {
                 native
             >
                 {
-                    recruitersList.map((ta: any) => {
+                    propsReferralDataGrid.recruitersList.map((ta: any) => {
                         return <option key={`${ta.id}-recruiters`} value={ta.id}>{ta.name}</option>;
                     })
                 }
@@ -172,8 +164,13 @@ export default function ReferralDataGrid() {
     };
 
     const handleFetchReferrals = () => {
-        fetchAllReferrals(token).then(response => {
-            setReferrals(response);
+        fetchAllReferrals(token).then((response: any) => {
+            setReferrals(response.map((referral: any) => {
+                return {
+                    ...referral,
+                    ta_recruiter: propsReferralDataGrid.recruitersList.find((x: any) => x.id === referral.ta_recruiter).name
+                }
+            }));
         }).catch(e => {
             console.log(e);
             if (e.response.status === 401) {
@@ -193,21 +190,6 @@ export default function ReferralDataGrid() {
         });
     }
 
-    const handleFetchRecruiters = async () => {
-        return fetchAllRecruiters(token).then((response) => {
-            const recruiters = [
-                {
-                    id: 0,
-                    name: 'Select one'
-                },
-                ...response,
-            ]
-            setRecruitersList(recruiters);
-        }).catch((e) => {
-            snackbar.error(e.message, 'Referrals');
-        })
-    }
-
     useEffect(() => {
         if (token === '') {
             setToken('');
@@ -215,7 +197,6 @@ export default function ReferralDataGrid() {
         } else {
             fetchPermissions(token).then((response: any) => {
                 setPermissions(response.permissions);
-                handleFetchRecruiters();
                 handleFetchReferrals();
             }).catch(e => {
                 console.log(e);
@@ -240,7 +221,8 @@ export default function ReferralDataGrid() {
             editable: Boolean(permissions.find((x: any) => x.id === 11 || x.id === 32)),
             renderEditCell: renderSelectEditInputCell,
             renderCell: (params => {
-                const status = statusOptions.find(x => x.value === params.row.status)
+                let status;
+                status = statusOptions.find(x => x.label === params.row.status)
                 return <Chip
                     className={'center'}
                     label={status?.label ?? 'Loading'}
@@ -251,10 +233,11 @@ export default function ReferralDataGrid() {
             }),
             preProcessEditCellProps: (params: GridPreProcessEditCellProps) => {
                 snackbar.info('Updating...', 'Referral');
+                const statusId = statusOptions.find(x => x.label === params.props.value)?.value
                 return updateReferral({
                     referral: {
                         id: params.id,
-                        status: params.props.value
+                        status: statusId
                     },
                     token
                 }).then(() => {
@@ -270,11 +253,6 @@ export default function ReferralDataGrid() {
 
                     return { ...params.props, error: true }
                 });
-            },
-            valueGetter: (params) => {
-                const status = statusOptions.find(x => x.value === params.value);
-
-                return status?.label;
             },
         },
         {
@@ -394,16 +372,17 @@ export default function ReferralDataGrid() {
             editable: true,
             renderEditCell: renderSelectEditInputRecruitersCell,
             renderCell: (params => {
-                const ta = recruitersList.find((ta: any) => ta.id === params.row.ta_recruiter);
+                const ta = propsReferralDataGrid.recruitersList.find((ta: any) => ta.name === params.row.ta_recruiter);
                 return ta?.name ?? 'Loading';
             }),
             preProcessEditCellProps: (params: GridPreProcessEditCellProps) => {
                 snackbar.info('Updating...', 'Referral');
+                const newId = propsReferralDataGrid.recruitersList.find((ta: any) => ta.name === params.props.value);
 
                 return assignRecruiter({
                     request: {
                         referralId: params.id,
-                        taId: params.props.value
+                        taId: newId.id
                     },
                     token
                 }).then(() => {
@@ -419,11 +398,6 @@ export default function ReferralDataGrid() {
 
                     return { ...params.props, error: true }
                 });
-            },
-            valueGetter: (params) => {
-                const ta = recruitersList.find((ta: any) => ta.id === params.value);
-
-                return ta?.name;
             },
         },
         {
