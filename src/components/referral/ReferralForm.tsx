@@ -86,7 +86,6 @@ const ReferralForm = (props: ReferralFormProps = {}) => {
             } else {
                 const mergedValues = {
                     ...values,
-                    linkedinUrl: `https://linkedin.com/in/${values.linkedinUrl}`,
                     techStacks: String(tags)
                 }
                 createReferral({
@@ -176,7 +175,7 @@ const ReferralForm = (props: ReferralFormProps = {}) => {
                         onChange={saveReferralFormik.handleChange}
                         value={saveReferralFormik.values.linkedinUrl}
                         type="text"
-                        label={`LinkedIn ${isUpdating ? 'URL' : 'Username'}`}
+                        label={`LinkedIn URL`}
                         variant="outlined"
                         error={saveReferralFormik.touched.linkedinUrl && Boolean(saveReferralFormik.errors.linkedinUrl)}
                         helperText={saveReferralFormik.touched.linkedinUrl && saveReferralFormik.errors.linkedinUrl?.toString()}
