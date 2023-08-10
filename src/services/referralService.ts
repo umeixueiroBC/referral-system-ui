@@ -1,6 +1,6 @@
 import axios from "axios";
 import {useMutation} from "@tanstack/react-query";
-import {baseApiPath, referralsBasePath} from "../endpoints";
+import {baseApiPath, downloadCv, referralsBasePath} from "../endpoints";
 
 type chipColor = "primary" | "success" | "error" | "default" | "secondary" | "info" | "warning" | undefined;
 export const statusOptions: ({ value: number; color: chipColor; label: string })[] = [
@@ -48,6 +48,32 @@ export const useFetchAllReferrals = () => {
     };
 }
 
+export const useDownloadCvReferral = () => {
+    const {isSuccess, isLoading, mutateAsync} = useMutation(downloadCvReferral);
+
+    return {
+        isSuccessDownloadCvReferral: isSuccess,
+        isLoadingDownloadCvReferral: isLoading,
+        downloadCvReferral: mutateAsync,
+    };
+}
+
+const downloadCvReferral = async ({referralId, token}: { referralId: any; token: string }) => {
+
+    try {
+        const { data } = await axios.get(`${baseApiPath}${downloadCv(referralId)}`, {
+            headers: {
+                'Authorization': 'Bearer ' + token
+            },
+            responseType: 'blob'
+        });
+
+        return data;
+    } catch (e) {
+        throw e;
+    }
+}
+
 const fetchReferral = async ({id, token}: { id: any; token: string }) => {
 
     try {
@@ -77,18 +103,19 @@ export const useFetchReferral = () => {
 }
 
 const createReferral = async ({referral, token}: { referral: any; token: string }) => {
-    let request = {
-        full_name: referral.fullName,
-        email: referral.email,
-        linkedin_url: referral.linkedinUrl,
-        cv_url: referral.cvUrl,
-        comments: referral.comments,
-        tech_stack: referral.techStacks,
-        phone_number: referral.phoneNumber
-    }
+    let request = new FormData();
+    request.append('full_name', referral.fullName);
+    request.append('email', referral.email);
+    request.append('linkedin_url', referral.linkedinUrl);
+    request.append('comments', referral.comments);
+    request.append('tech_stack', referral.techStacks);
+    request.append('phone_number', referral.phoneNumber);
+    request.append('file', referral.cvFile);
+
     const { data } = await axios.post(`${baseApiPath}${referralsBasePath}`, request, {
         headers: {
-            'Authorization': 'Bearer ' + token
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'multipart/form-data'
         }
     });
     return data;
@@ -105,27 +132,29 @@ export const useCreateReferrals = () => {
 }
 
 const updateReferral = async ({referral, token}: { referral: any; token: string }) => {
-    let request: any = {
+    let request = new FormData();
+    let dataRequest: any = {
         full_name: referral.fullName,
         email: referral.email,
         linkedin_url: referral.linkedinUrl,
-        cv_url: referral.cvUrl,
         comments: referral.comments,
         tech_stack: referral.techStacks,
         phone_number: referral.phoneNumber,
         status: referral.status,
-        ta_recruiter: referral.taRecruiter
+        ta_recruiter: referral.taRecruiter,
+        file: referral.cvFile
     }
 
-    Object.keys(request).forEach(key => {
-        if (request[key] === null) {
-            delete request[key];
+    Object.keys(dataRequest).forEach(key => {
+        if (dataRequest[key] != null) {
+            request.append(key, dataRequest[key]);
         }
     });
 
     const { data } = await axios.put(`${baseApiPath}${referralsBasePath}/${referral.id}`, request,{
         headers: {
-            'Authorization': 'Bearer ' + token
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'multipart/form-data'
         }
     });
     return data;

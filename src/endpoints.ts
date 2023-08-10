@@ -13,3 +13,5 @@ export const permissionsBasePath = '/user/permissions'
 export const permissionsByUser = (id: number) => `/user/${id}/permissions`;
 
 export const rolesBasePath = '/roles';
+
+export const downloadCv = (id: number) => `/referral/${id}/cv`;

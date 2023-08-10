@@ -38,7 +38,8 @@ import {
     useDeleteReferrals,
     useUpdateReferral,
     useAssignRecruiter,
-    statusOptions
+    statusOptions,
+    useDownloadCvReferral
 } from "../../services/referralService";
 import useLocalStorage from "../storage/useLocalStorage";
 import { useHistory } from "react-router-dom";
@@ -81,6 +82,7 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
     const { updateReferral } = useUpdateReferral();
     const { assignRecruiter } = useAssignRecruiter();
     const { deleteReferral } = useDeleteReferrals();
+    const { downloadCvReferral } = useDownloadCvReferral();
     const [referrals, setReferrals] = useState<any>([]);
     const [pageSize, setPageSize] = useState<number>(10);
     const snackbar = useSnackbar();
@@ -208,6 +210,43 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
         }
     }, []);
 
+    const handleDownloadCv = (params: any) => {
+        const referralId = params.id;
+        downloadCvReferral({
+            referralId,
+            token
+        }).then((response) => {
+            const dataBlob = new Blob([response], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.download = params.value;
+            link.click();
+            window.URL.revokeObjectURL(url);
+            snackbar.success('CV downloaded', 'Referral');
+        }).catch(({ response }) => {
+            const fileReader = new FileReader();
+            fileReader.readAsText(response.data);
+            fileReader.onload = (event) => {
+                const data = event.target?.result?.toString();
+                if (data) {
+                    try {
+                        const dataResponse = JSON.parse(data);
+
+                        if (response.status === 500 && dataResponse.errors[0] === '404 Not Found') {
+                            snackbar.error('CV Not Found', 'Referral');
+                        } else {
+                            snackbar.error('Error while downloading CV. Try again', 'Referral');
+                        }
+                    } catch (error) {
+                        snackbar.error('Error processing the information', 'Referral');
+                    }
+                }
+            }
+        });
+    }
+
     const referralDataGridColumns: GridColDef[] = [
         {
             field: "status",
@@ -296,7 +335,7 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
             renderCell: (params: any) => (
                 <LightTooltip title="Click to open">
                     <IconButton className='icons' color="primary" component="button"
-                        onClick={() => window.open(params.value, '_blank', 'noopener,noreferrer')}>
+                        onClick={() => handleDownloadCv(params)}>
                         <FileOpenOutlined />
                     </IconButton>
                 </LightTooltip>
