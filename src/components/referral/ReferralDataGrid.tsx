@@ -17,15 +17,19 @@ import {
     LinkedIn,
 } from '@mui/icons-material/';
 import {
+    Badge,
     Button,
     Chip,
     Dialog,
     DialogActions,
     DialogContent,
+    DialogContentText,
     DialogTitle,
+    Divider,
     IconButton,
-    LinearProgress, Select, SelectChangeEvent,
+    LinearProgress, List, ListItem, ListItemText, Select, SelectChangeEvent,
     styled,
+    TextField,
     Tooltip,
     tooltipClasses,
     TooltipProps,
@@ -42,9 +46,10 @@ import {
 } from "../../services/referralService";
 import useLocalStorage from "../storage/useLocalStorage";
 import { useHistory } from "react-router-dom";
-import { useSnackbar } from "../../hooks/SnackBarProvider";
+import { useSnackbar, SnackbarContext } from '../../hooks/SnackBarProvider';
 import { useGridApiContext } from "@mui/x-data-grid-pro";
 import { useFetchPermissions } from '../../services/userService';
+import CommentIcon from '@mui/icons-material/Comment';
 
 const LightTooltip = styled(({ className, ...props }: TooltipProps) => (
     <Tooltip {...props} classes={{ popper: className }} />
@@ -71,6 +76,51 @@ function CustomColumnMenu(props: GridColumnMenuProps) {
         </GridColumnMenuContainer>
     );
 }
+
+const notes: any = [
+    {
+        creator: 'Erika Ortiz',
+        content: 'Este candidato pasó todas las pruebas',
+        fecha: 'Jan 7, 2023',
+        status: 5
+    },
+    {
+        creator: 'Alfredo Rodriguez',
+        content: 'Quedó de enviar su curriculum actualizado',
+        fecha: 'Feb 4, 2023',
+        status: 4
+    },
+    {
+        creator: 'Erika Ortiz',
+        content: 'Se le solicitó una entrevista adicional',
+        fecha: 'March 9, 2023',
+        status: 3
+    },
+    {
+        creator: 'Erika Ortiz',
+        content: 'Tambien se le puede localizar en el tel: 5555555555',
+        fecha: 'March 30, 2023',
+        status: 1
+    },
+    {
+        creator: 'Erika Ortiz',
+        content: 'Se le envió la propuesta',
+        fecha: 'Jan 7, 2023',
+        status: 1
+    },
+    {
+        creator: 'Erika Ortiz',
+        content: 'Se le hizo una contra oferta',
+        fecha: 'Jan 7, 2023',
+        status: 2
+    },
+    {
+        creator: 'Erika Ortiz',
+        content: 'Aceptó la oferta negociando un 5% adicional',
+        fecha: 'feJan 7, 2023',
+        status: 6
+    }
+];
 
 export default function ReferralDataGrid(propsReferralDataGrid: any) {
     const theme = useTheme();
@@ -165,6 +215,8 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
 
     const handleFetchReferrals = () => {
         fetchAllReferrals(token).then((response: any) => {
+            console.log(response);
+            console.log(propsReferralDataGrid.recruitersList);
             setReferrals(response.map((referral: any) => {
                 return {
                     ...referral,
@@ -188,6 +240,10 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
         }).finally(() => {
             setIdToBeDeleted(undefined);
         });
+    }
+
+    const handleNewNote = (id: any, data: any) => {
+        snackbar.success('New note created!');
     }
 
     useEffect(() => {
@@ -425,8 +481,10 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
                             component="button"
                             onClick={() => {
                                 setReferralComments({
+                                    referral_id: params.row.id,
                                     referralName: params.row.full_name,
-                                    comments: params.row.comments !== '' ? params.row.comments : 'No comments'
+                                    comments: params.row.comments !== '' ? params.row.comments : 'No comments',
+                                    referedBy: params.row.referred_by_name
                                 });
 
                                 setIsCommentsDialogOpen(true);
@@ -483,17 +541,86 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
             {/* Dialog for Comments */}
             <Dialog
                 fullScreen={fullScreen}
+                fullWidth={true}
+                maxWidth={'sm'}
                 open={isCommentsDialogOpen}
                 onClose={() => setIsCommentsDialogOpen(false)}
                 aria-labelledby="permission-dialog-title"
             >
-                <DialogTitle id="permission-dialog-title">
-                    {`Comments for ${referralComments.referralName}`}
+                <DialogTitle id="permission-dialog-title" sx={{ color: 'white',textAlign: 'center', backgroundColor: '#44546A' }}>
+                    {`Comment for ${referralComments.referralName}`}<br/>
+                    <small>{`${referralComments.comments}`}</small>
                 </DialogTitle>
-                <DialogContent sx={{ textAlign: 'center' }}>
-                    {referralComments.comments}
+                <DialogContentText color={'primary'} sx={{ textAlign: 'center', marginTop: 4 }}>
+                    {`Refered by ${referralComments.referedBy}`}<br/>
+                    Notes:
+                </DialogContentText>
+                <DialogContent>
+                <List
+                    component="nav"
+                    aria-label="mailbox folders"
+                    sx={{
+                        width: '100%',
+                        margin: 'auto',
+                        bgcolor: 'background.paper',
+                        position: 'relative',
+                        overflow: 'auto',
+                        maxHeight: 360,
+                        '& ul': { padding: 0 },
+                    }}
+                >
+                    <Divider/>
+                    {
+                        notes.map((note: any) => (
+                            <>
+                                <ListItem>
+                                    <CommentIcon color='primary' sx={{marginRight: 1}}/>
+                                    <ListItemText
+                                        primary={`${note.creator}`}
+                                        secondary={note.fecha}
+                                        sx={{color: '#1A77D2'}} />
+                                    <Chip
+                                        className={'center'}
+                                        label={statusOptions[note.status].label}
+                                        size={'small'}
+                                        variant={'outlined'}
+                                        color={statusOptions[note.status].color}
+                                    />
+                                </ListItem>
+                                <ListItem>
+                                    <ListItemText
+                                        primary={note.content}
+                                        sx={{marginLeft: 4}}/>
+                                </ListItem>
+                                <Divider/>
+                            </>
+                        ))
+                    }
+                </List>
                 </DialogContent>
+                <DialogContentText sx={{ marginLeft: '30px', marginRight: '30px', marginBottom: '20px'}}>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        id="note"
+                        label="New note"
+                        type="note"
+                        fullWidth
+                        variant="outlined"
+                    />
+                </DialogContentText>
                 <DialogActions>
+                <Button
+                        sx={{ color: "#44546A", borderColor: "#44546A", ":hover": { borderColor: "white", color: "white", backgroundColor: "#44546A" } }}
+                        variant={"outlined"}
+                        onClick={() => {
+                            handleNewNote(referralComments.referral_id, notes);
+                            setIsCommentsDialogOpen(false);
+                        }}
+                        autoFocus
+                    >
+                        Add +
+                    </Button>
                     <Button
                         sx={{ color: "#44546A", borderColor: "#44546A", ":hover": { borderColor: "white", color: "white", backgroundColor: "#44546A" } }}
                         variant={"outlined"}
@@ -532,7 +659,7 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
                         variant={"outlined"}
                         onClick={() => {
                             handleDelete(idToBeDeleted);
-                            setIsDeleteConfirmDialogOpen(false)
+                            setIsDeleteConfirmDialogOpen(false);
                         }}
                         autoFocus
                     >
