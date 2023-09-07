@@ -1,17 +1,18 @@
 import axios from "axios";
 import {useMutation} from "@tanstack/react-query";
-import {baseApiPath, downloadCv, referralsBasePath} from "../endpoints";
+import {baseApiPath, downloadCv, referralComments, referralsBasePath} from "../endpoints";
 
 type chipColor = "primary" | "success" | "error" | "default" | "secondary" | "info" | "warning" | undefined;
 export const statusOptions: ({ value: number; color: chipColor; label: string })[] = [
     { value: 0, label: 'Select one', color: 'default', },
-    { value: 1, label: 'Recruitment', color: 'primary', },
-    { value: 2, label: 'Interviewing', color: 'primary', },
-    { value: 3, label: 'Managers', color: 'primary', },
-    { value: 4, label: 'Client', color: 'primary', },
-    { value: 5, label: 'Offer', color: 'success', },
-    { value: 6, label: 'Hiring', color: 'success', },
-    { value: 7, label: 'Failed', color: 'error', }
+    { value: 1, label: 'Applied', color: 'primary', },
+    { value: 2, label: 'Recruitment', color: 'primary', },
+    { value: 3, label: 'Interviewing', color: 'primary', },
+    { value: 4, label: 'Managers', color: 'primary', },
+    { value: 5, label: 'Client', color: 'primary', },
+    { value: 6, label: 'Offer', color: 'success', },
+    { value: 7, label: 'Hiring', color: 'success', },
+    { value: 8, label: 'Failed', color: 'error', }
 ];
 
 const fetchAllReferrals: any = async (token: string) => {
@@ -102,6 +103,56 @@ export const useFetchReferral = () => {
     };
 }
 
+const fetchReferralComments = async ({id, token}: { id: any; token: string }) => {
+
+    try {
+        const { data } = await axios.get(`${baseApiPath}${referralComments(id)}`, {
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+        return data;
+    } catch (e) {
+        throw e;
+    }
+}
+
+export const useFetchReferralComments = () => {
+    const {isSuccess, isLoading, mutateAsync} = useMutation(fetchReferralComments);
+
+    return {
+        isSuccessfetchReferralComments: isSuccess,
+        isLoadingfetchReferralComments: isLoading,
+        fetchReferralComments: mutateAsync
+    };
+}
+
+const createReferralComment = async ({referral, token}: { referral: any; token: string }) => {
+    let request = {
+        referral_status_id: referral.referralStatusId > 0 ? referral.referralStatusId : 1,
+        comment: referral.comment
+    }
+
+    const { data } = await axios.post(`${baseApiPath}${referralComments(referral.id)}`, request, {
+        headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    });
+
+    return data;
+}
+
+export const useCreateReferralComment = () => {
+    const {isSuccess, isLoading, mutateAsync} = useMutation(createReferralComment);
+
+    return {
+        isSuccessCreateReferralComment: isSuccess,
+        isLoadingCreateReferralComment: isLoading,
+        createReferralComment: mutateAsync
+    };
+}
+
 const createReferral = async ({referral, token}: { referral: any; token: string }) => {
     let request = new FormData();
     request.append('full_name', referral.fullName);
@@ -140,7 +191,7 @@ const updateReferral = async ({referral, token}: { referral: any; token: string 
         comments: referral.comments,
         tech_stack: referral.techStacks,
         phone_number: referral.phoneNumber,
-        status: referral.status,
+        referral_status_id: referral.status,
         ta_recruiter: referral.taRecruiter,
         file: referral.cvFile
     }

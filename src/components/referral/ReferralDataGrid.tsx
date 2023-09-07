@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     DataGrid, GridColDef,
     GridColumnMenuContainer,
@@ -22,10 +22,13 @@ import {
     Dialog,
     DialogActions,
     DialogContent,
+    DialogContentText,
     DialogTitle,
+    Divider,
     IconButton,
-    LinearProgress, Select, SelectChangeEvent,
+    LinearProgress, List, ListItem, ListItemText, Select, SelectChangeEvent,
     styled,
+    TextField,
     Tooltip,
     tooltipClasses,
     TooltipProps,
@@ -39,13 +42,16 @@ import {
     useUpdateReferral,
     useAssignRecruiter,
     statusOptions,
-    useDownloadCvReferral
+    useDownloadCvReferral,
+    useFetchReferralComments,
+    useCreateReferralComment
 } from "../../services/referralService";
 import useLocalStorage from "../storage/useLocalStorage";
 import { useHistory } from "react-router-dom";
-import { useSnackbar } from "../../hooks/SnackBarProvider";
+import { useSnackbar } from '../../hooks/SnackBarProvider';
 import { useGridApiContext } from "@mui/x-data-grid-pro";
 import { useFetchPermissions } from '../../services/userService';
+import CommentIcon from '@mui/icons-material/Comment';
 
 const LightTooltip = styled(({ className, ...props }: TooltipProps) => (
     <Tooltip {...props} classes={{ popper: className }} />
@@ -82,8 +88,13 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
     const { updateReferral } = useUpdateReferral();
     const { assignRecruiter } = useAssignRecruiter();
     const { deleteReferral } = useDeleteReferrals();
+    const { fetchReferralComments } = useFetchReferralComments();
+    const { createReferralComment } = useCreateReferralComment();
     const { downloadCvReferral } = useDownloadCvReferral();
     const [referrals, setReferrals] = useState<any>([]);
+    const [notes, setNotes] = useState<any>([]);
+    const [note, setNote] = useState<string>('');
+    const notesRef = useRef<any>(null);
     const [pageSize, setPageSize] = useState<number>(10);
     const snackbar = useSnackbar();
     const handleClickCopyEmail = () => {
@@ -92,8 +103,11 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
     const [referralComments, setReferralComments] = useState<any>({});
 
     const [isCommentsDialogOpen, setIsCommentsDialogOpen] = useState<boolean>(false);
+    const [isCommentDialogOpen, setIsCommentDialogOpen] = useState<boolean>(false);
     const [isDeleteConfirmDialogOpen, setIsDeleteConfirmDialogOpen] = useState<boolean>(false);
+    const [isChangeStatusDialogOpen, setIsChangeStatusDialogOpen] = useState<boolean>(false);
     const [idToBeDeleted, setIdToBeDeleted] = useState<number>();
+    const [statusToChange, setStatusToChange] = useState<any>({});
 
     // PERMISSIONS
     const { fetchPermissions, isSuccesFetchPermissions } = useFetchPermissions();
@@ -192,6 +206,27 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
         });
     }
 
+    const handleNewNote = (referral: any, note: any) => {
+        createReferralComment({
+            referral: {
+                id: referral.referral_id,
+                referralStatusId: referral.referralStatusId,
+                comment: note
+            },
+            token
+        }).then(() => {
+            setNote('');
+            snackbar.success('New note created!');
+            handleReferralComments(referral.referral_id);
+        }).catch(({ response }) => {
+            snackbar.error('Error creating new note. Try again', 'Referral');
+        });
+    }
+
+    useEffect(() => {
+        notesRef.current?.lastElementChild?.scrollIntoView();
+      }, [notes]);
+
     useEffect(() => {
         if (token === '') {
             setToken('');
@@ -247,6 +282,64 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
         });
     }
 
+    const updateStatus = () => {
+        snackbar.info('Updating...', 'Referral');
+        updateReferral({
+            referral: {
+                id: statusToChange.referral.id,
+                status: statusToChange.newStatus
+            },
+            token
+        }).then(() => {
+            createReferralComment({
+                referral: {
+                    id: statusToChange.referral.id,
+                    referralStatusId: statusToChange.newStatus,
+                    comment: note
+                },
+                token
+            }).then(() => {
+                setNote('');
+                snackbar.success('Referral Updated', 'Referral');
+                setIsCommentDialogOpen(false);
+                setIsChangeStatusDialogOpen(false);
+            }).catch(({ response }) => {
+                snackbar.error('Error creating new note. Try again', 'Referral');
+            });
+        }).catch(({ response }) => {
+            if (response.status === 401) {
+                snackbar.error('Unauthorized', 'Referral');
+            } else {
+                snackbar.error('Status cannot be updated. Try again', 'Referral');
+            }
+        });
+    }
+
+    const handleReferralComments = (id: any) => {
+        fetchReferralComments({
+            id,
+            token
+        }).then((response) => {
+            setNotes(response.map((note: any) => {
+                return {
+                    creator: note.creator,
+                    content: note.content,
+                    date: note.comment_date,
+                    status: note.status
+                }
+            }));
+            setIsCommentsDialogOpen(true);
+        }).catch(({ response }) => {
+            if (response.status === 404) {
+                snackbar.info('Comments not found', 'Referral');
+                setNotes([]);
+                setIsCommentsDialogOpen(true);
+            } else {
+                snackbar.error('Error retrieving comments. Try again', 'Referral');
+            }
+        });
+    }
+
     const referralDataGridColumns: GridColDef[] = [
         {
             field: "status",
@@ -271,27 +364,15 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
                 />;
             }),
             preProcessEditCellProps: (params: GridPreProcessEditCellProps) => {
-                snackbar.info('Updating...', 'Referral');
-                const statusId = statusOptions.find(x => x.label === params.props.value)?.value
-                return updateReferral({
-                    referral: {
-                        id: params.id,
-                        status: statusId
-                    },
-                    token
-                }).then(() => {
-                    snackbar.success('Referral Updated', 'Referral');
-                    handleFetchReferrals();
-                    return { ...params.props, error: false }
-                }).catch(({ response }) => {
-                    if (response.status === 401) {
-                        snackbar.error('Unauthorized', 'Referral');
-                    } else {
-                        snackbar.error('Status cannot be updated. Try again', 'Referral');
-                    }
-
-                    return { ...params.props, error: true }
+                setStatusToChange({
+                    props: params.props,
+                    referral: params.row,
+                    prevStatus: statusOptions.find(x => x.label === params.row.status)?.value,
+                    newStatus: statusOptions.find(x => x.label === params.props.value)?.value
                 });
+                setIsCommentDialogOpen(true);
+
+                return { ...params.props, error: false }
             },
         },
         {
@@ -463,12 +544,14 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
                             color="primary"
                             component="button"
                             onClick={() => {
+                                handleReferralComments(params.row.id);
                                 setReferralComments({
+                                    referral_id: params.row.id,
                                     referralName: params.row.full_name,
-                                    comments: params.row.comments !== '' ? params.row.comments : 'No comments'
+                                    comments: params.row.comments !== '' ? params.row.comments : 'No comments',
+                                    referedBy: params.row.referred_by_name,
+                                    referralStatusId: statusOptions.find(x => x.label === params.row.status)?.value.toString()
                                 });
-
-                                setIsCommentsDialogOpen(true);
                             }}
                         >
                             <Comment />
@@ -522,24 +605,163 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
             {/* Dialog for Comments */}
             <Dialog
                 fullScreen={fullScreen}
+                fullWidth={true}
+                maxWidth={'sm'}
                 open={isCommentsDialogOpen}
                 onClose={() => setIsCommentsDialogOpen(false)}
                 aria-labelledby="permission-dialog-title"
             >
-                <DialogTitle id="permission-dialog-title">
-                    {`Comments for ${referralComments.referralName}`}
+                <DialogTitle id="permission-dialog-title" sx={{ color: 'white',textAlign: 'center', backgroundColor: '#44546A' }}>
+                    {`Comment for ${referralComments.referralName}`}<br/>
+                    <small>{`${referralComments.comments}`}</small>
                 </DialogTitle>
-                <DialogContent sx={{ textAlign: 'center' }}>
-                    {referralComments.comments}
+                <DialogContentText color={'primary'} sx={{ textAlign: 'center', marginTop: 4 }}>
+                    {`Refered by ${referralComments.referedBy}`}<br/>
+                    Notes:
+                </DialogContentText>
+                <DialogContent>
+                <List
+                    ref={notesRef}
+                    component="nav"
+                    aria-label="mailbox folders"
+                    sx={{
+                        width: '100%',
+                        margin: 'auto',
+                        bgcolor: 'background.paper',
+                        position: 'relative',
+                        overflow: 'auto',
+                        maxHeight: 360,
+                        '& ul': { padding: 0 },
+                    }}
+                >
+                    <Divider/>
+                    {
+                        notes.map((note: any) => (
+                            <>
+                                <ListItem>
+                                    <CommentIcon color='primary' sx={{marginRight: 1}}/>
+                                    <ListItemText
+                                        primary={`${note.creator}`}
+                                        secondary={note.date}
+                                        sx={{color: '#1A77D2'}} />
+                                    <Chip
+                                        className={'center'}
+                                        label={statusOptions[note.status].label}
+                                        size={'small'}
+                                        variant={'outlined'}
+                                        color={statusOptions[note.status].color}
+                                    />
+                                </ListItem>
+                                <ListItem>
+                                    <ListItemText
+                                        primary={note.content}
+                                        sx={{marginLeft: 4}}/>
+                                </ListItem>
+                                <Divider/>
+                            </>
+                        ))
+                    }
+                </List>
                 </DialogContent>
+                <DialogContentText sx={{ marginLeft: '30px', marginRight: '30px', marginBottom: '20px'}}>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        id="note"
+                        label="New note"
+                        type="note"
+                        fullWidth
+                        variant="outlined"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                    />
+                </DialogContentText>
                 <DialogActions>
+                <Button
+                        sx={{ color: "#44546A", borderColor: "#44546A", ":hover": { borderColor: "white", color: "white", backgroundColor: "#44546A" } }}
+                        variant={"outlined"}
+                        onClick={() => {
+                            if (note.trim() !== "") {
+                                handleNewNote(referralComments, note);
+                            } else {
+                                snackbar.error('The note cannot be empty', 'Referral');
+                            }
+                        }}
+                        autoFocus
+                    >
+                        Add +
+                    </Button>
                     <Button
                         sx={{ color: "#44546A", borderColor: "#44546A", ":hover": { borderColor: "white", color: "white", backgroundColor: "#44546A" } }}
                         variant={"outlined"}
-                        onClick={() => setIsCommentsDialogOpen(false)}
+                        onClick={() => {
+                            setNote('');
+                            setIsCommentsDialogOpen(false)
+                        }}
                         autoFocus
                     >
                         Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Dialog to comment on status change*/}
+            <Dialog
+                fullScreen={fullScreen}
+                fullWidth={true}
+                maxWidth={'sm'}
+                open={isCommentDialogOpen}
+                onClose={() => {}}
+                aria-labelledby="permission-dialog-title"
+            >
+                <DialogTitle id="permission-dialog-title" sx={{ color: 'white',textAlign: 'center', backgroundColor: '#44546A' }}>
+                    Status Change<br/>
+                    <small>{`${statusOptions.find(x => x.value === statusToChange.prevStatus)?.label} ---> ${statusOptions.find(x => x.value === statusToChange.newStatus)?.label}`}</small>
+                </DialogTitle>
+                <DialogContentText color={'primary'} sx={{ textAlign: 'center', marginTop: 4 }}>
+                    Note:
+                </DialogContentText>
+                <DialogContentText sx={{ marginLeft: '30px', marginRight: '30px', marginBottom: '20px'}}>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        id="note"
+                        label="New note"
+                        type="note"
+                        fullWidth
+                        variant="outlined"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                    />
+                </DialogContentText>
+                <DialogActions>
+                <Button
+                        sx={{ color: "#44546A", borderColor: "#44546A", ":hover": { borderColor: "white", color: "white", backgroundColor: "#44546A" } }}
+                        variant={"outlined"}
+                        onClick={() => {
+                            if (note.trim() !== "") {
+                                setIsChangeStatusDialogOpen(true);
+                            } else {
+                                snackbar.error('The note cannot be empty', 'Referral');
+                            }
+                        }}
+                        autoFocus
+                    >
+                        Add +
+                    </Button>
+                    <Button
+                        sx={{ color: "#44546A", borderColor: "#44546A", ":hover": { borderColor: "white", color: "white", backgroundColor: "#44546A" } }}
+                        variant={"outlined"}
+                        onClick={() => {
+                            setNote('');
+                            setStatusToChange({});
+                            snackbar.error('Status change not made', 'Referral');
+                            setIsCommentDialogOpen(false);
+                            handleFetchReferrals();
+                        }}
+                        autoFocus
+                    >
+                        Cancel
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -571,11 +793,53 @@ export default function ReferralDataGrid(propsReferralDataGrid: any) {
                         variant={"outlined"}
                         onClick={() => {
                             handleDelete(idToBeDeleted);
-                            setIsDeleteConfirmDialogOpen(false)
+                            setIsDeleteConfirmDialogOpen(false);
                         }}
                         autoFocus
                     >
                         Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Dialog for Confirm change status */}
+            <Dialog
+                fullScreen={fullScreen}
+                open={isChangeStatusDialogOpen}
+                onClose={() => {}}
+                aria-labelledby="permission-dialog-title"
+            >
+                <DialogTitle id="permission-dialog-title">
+                    Change Status confirmation
+                </DialogTitle>
+                <DialogContent sx={{ textAlign: 'center' }}>
+                    Are you sure you want to change the status this referral?
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        sx={{ color: "#44546A", borderColor: "#44546A", ":hover": { borderColor: "white", color: "white", backgroundColor: "#44546A" } }}
+                        variant={"outlined"}
+                        onClick={() => {
+                            setNote('');
+                            setStatusToChange({});
+                            snackbar.info('Status change not made', 'Referral');
+                            setIsCommentDialogOpen(false);
+                            setIsChangeStatusDialogOpen(false);
+                            handleFetchReferrals();
+                        }}
+                        autoFocus
+                    >
+                        Close
+                    </Button>
+                    <Button
+                        color='success'
+                        variant={"outlined"}
+                        onClick={() => {
+                            updateStatus();
+                        }}
+                        autoFocus
+                    >
+                        Confirm
                     </Button>
                 </DialogActions>
             </Dialog>
