@@ -314,13 +314,16 @@ const ReferralForm = (props: ReferralFormProps = {}) => {
                                     setTechStack(event.target.value);
                                 }}
                                 onKeyDown={(keyEvent: any) => {
+                                    var standarizedTagsToCompare: string[] = tags.map((tag: string)=>{
+                                        return tag.toUpperCase().split(' ').join('')
+                                    });
                                     if ((keyEvent.charCode || keyEvent.keyCode) === 13) {
                                         keyEvent.preventDefault();
-                                        if (!tags.includes(techStack)) {
+                                        if (!standarizedTagsToCompare.includes(techStack.toUpperCase().split(' ').join(''))) {
                                             setTags((current: string[]) => {
                                                 return [
                                                     ...current,
-                                                    techStack
+                                                    techStack.toUpperCase()
                                                 ]
                                             });
                                         }
